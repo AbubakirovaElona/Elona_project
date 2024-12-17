@@ -159,7 +159,7 @@ class Game:
             player_name, scene, score = load_game()
             if player_name and scene:  # Если удалось загрузить игру
                 self.player_name = player_name
-                self.current_scene = scene
+                self.current_scene = "start"
                 self.score = score
                 print(Fore.CYAN + f"Добро пожаловать обратно, {self.player_name}!")
                 print(Fore.YELLOW + f"Ваш текущий счет: {self.score}")
