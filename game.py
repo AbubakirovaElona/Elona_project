@@ -1,34 +1,26 @@
 import json
 import sys
-import os
 from colorama import Fore, Style, init
 
 init(autoreset=True)
 
-SAVE_FILE = "save.json"
-
 # Функция сохранения игры
-def save_game(player_name, current_scene):
-    data = {"player_name": player_name, "current_scene": current_scene}
-    with open(SAVE_FILE, "w") as file:
+def save_game(player_name, current_scene, score):
+    data = {"player_name": player_name, "current_scene": current_scene, "score": score}
+    with open("save.json", "w") as file:
         json.dump(data, file)
     print(Fore.GREEN + "Игра сохранена!")
 
 # Функция загрузки игры
 def load_game():
     try:
-        with open(SAVE_FILE, "r") as file:
+        with open("save.json", "r") as file:
             data = json.load(file)
             print(Fore.YELLOW + "Игра загружена!")
-            return data["player_name"], data["current_scene"]
+            return data["player_name"], data["current_scene"], data["score"]
     except FileNotFoundError:
-        return None, None
-
-# Функция удаления сохранения
-def delete_save():
-    if os.path.exists(SAVE_FILE):
-        os.remove(SAVE_FILE)
-        print(Fore.RED + "Сохранение удалено. Начинаем новую игру!")
+        print(Fore.RED + "Файл сохранения не найден. Начните новую игру.")
+        return None, None, 0
 
 # Базовый класс Сцены
 class Scene:
@@ -43,7 +35,8 @@ class SceneStart(Scene):
         print("2. В пещеру")
         print("3. В деревню")
         print("4. Сохранить игру")
-        choice = input("Выберите действие (1-4): ")
+        print("5. Выйти из игры")
+        choice = input("Выберите действие (1-5): ")
 
         if choice == "1":
             self.next_scene = "forest"
@@ -52,8 +45,11 @@ class SceneStart(Scene):
         elif choice == "3":
             self.next_scene = "village"
         elif choice == "4":
-            save_game(game.player_name, "start")
+            save_game(game.player_name, game.current_scene, game.score)
             self.next_scene = "start"
+        elif choice == "5":
+            print(Fore.MAGENTA + "Спасибо за игру!")
+            sys.exit(0)  # Завершение игры
         else:
             print("Неверный выбор. Попробуйте снова.")
             self.next_scene = "start"
@@ -67,7 +63,9 @@ class SceneForest(Scene):
         choice = input("Выберите действие (1-2): ")
 
         if choice == "1":
-            print("Вы нашли сокровище! Но оно пустое...")
+            print("Вы нашли сокровище! Вы получаете 10 очков.")
+            game.score += 10  # Добавляем очки к общему счету
+            print(Fore.YELLOW + f"Ваш текущий счет: {game.score}")
             self.next_scene = "end"
         elif choice == "2":
             self.next_scene = "start"
@@ -113,8 +111,28 @@ class SceneVillage(Scene):
 class SceneEnd(Scene):
     def enter(self):
         print(Fore.MAGENTA + "\nИгра окончена.")
-        print("Спасибо за игру!")
-        sys.exit(0)
+        print(Fore.YELLOW + f"Ваш финальный счет: {game.score}")
+        self.show_end_menu()
+
+    def show_end_menu(self):
+        print("\n1. Сохранить игру")
+        print("2. Начать новую игру")
+        print("3. Выйти из игры")
+        choice = input("Выберите действие (1-3): ")
+
+
+        if choice == "1":
+            save_game(game.player_name, game.current_scene, game.score)
+            self.next_scene = "start"
+        elif choice == "2":
+            game.start_new_game()
+            game.play()
+        elif choice == "3":
+            print(Fore.MAGENTA + "Спасибо за игру!")
+            sys.exit(0)  # Завершение игры
+        else:
+            print("Неверный выбор. Попробуйте снова.")
+            self.show_end_menu()
 
 # Главный класс игры
 class Game:
@@ -129,34 +147,36 @@ class Game:
     def __init__(self):
         self.player_name = None
         self.current_scene = "start"
-
+        self.score = 0
 
     def start_game(self):
-        # Проверка на наличие сохранения
-        if os.path.exists(SAVE_FILE):
-            print(Fore.YELLOW + "Обнаружено сохранение игры!")
-            print("1. Загрузить сохранение")
-            print("2. Начать новую игру")
-            choice = input("Выберите действие (1-2): ")
+        print(Fore.CYAN + "Добро пожаловать в игру!")
+        print("1. Начать новую игру")
+        print("2. Загрузить игру")
+        choice = input("Выберите действие (1-2): ")
 
-            if choice == "1":
-                self.player_name, self.current_scene = load_game()
+        if choice == "2":
+            player_name, scene, score = load_game()
+            if player_name and scene:  # Если удалось загрузить игру
+                self.player_name = player_name
+                self.current_scene = scene
+                self.score = score
                 print(Fore.CYAN + f"Добро пожаловать обратно, {self.player_name}!")
-            elif choice == "2":
-                delete_save()
-                self.start_new_game()
+                print(Fore.YELLOW + f"Ваш текущий счет: {self.score}")
+                self.play()  # Продолжить игру
             else:
-                print("Неверный ввод. Начинаем новую игру.")
+                print("Не удалось загрузить игру. Начинаем новую.")
                 self.start_new_game()
+                self.play()
         else:
             self.start_new_game()
-
-        self.play()
+            self.play()
 
     def start_new_game(self):
         self.player_name = input("Введите ваше имя: ")
-        print(Fore.CYAN + f"Добро пожаловать, {self.player_name}! Приключение начинается!")
         self.current_scene = "start"
+        self.score = 0
+        print(Fore.CYAN + f"Добро пожаловать, {self.player_name}! Приключение начинается!")
 
     def play(self):
         while True:
